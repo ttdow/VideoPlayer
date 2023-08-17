@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <stbi/stb_image.h>
 
+#include "AudioSystem.h"
+
 #include <iostream>
 
 extern "C" {
@@ -11,6 +13,8 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
+#include <libavutil/channel_layout.h>
+#include <libswresample/swresample.h>
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -84,15 +88,21 @@ int main()
 
 	// Loop through all of the streams to find the video or audio stream.
 	int videoStreamIndex = -1;
+	int audioStreamIndex = -1;
 	for (int i = 0; i < formatContext->nb_streams; i++)
 	{
 		if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
 		{
 			videoStreamIndex = i;
 		}
+
+		if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
+		{
+			audioStreamIndex = i;
+		}
 	}
 
-	// Ensure a viable stream was found.
+	// Ensure a viable video stream was found.
 	if (videoStreamIndex == -1)
 	{
 		std::cout << "ERROR::FFMPEG: No video stream found." << std::endl;
@@ -100,10 +110,51 @@ int main()
 		return -1;
 	}
 
-	// Get the codec context.
-	AVCodecParameters* codecParams = formatContext->streams[videoStreamIndex]->codecpar;
-	AVCodecContext* codecContext = avcodec_alloc_context3(nullptr);
-	if (avcodec_parameters_to_context(codecContext, codecParams) < 0)
+	// Ensure a viable audio stream was found.
+	if (audioStreamIndex == -1)
+	{
+		std::cout << "ERROR::FMPEG: No audio stream found." << std::endl;
+		avformat_close_input(&formatContext);
+		return -1;
+	}
+	
+	// ------------------------- AUDIO ----------------------------------------
+
+	// Get the audio codec parameters.
+	AVCodecParameters* audioCodecParams = formatContext->streams[audioStreamIndex]->codecpar;
+	AVCodecContext* audioCodecContext = avcodec_alloc_context3(nullptr);
+	if (avcodec_parameters_to_context(audioCodecContext, audioCodecParams) < 0)
+	{
+		std::cout << "ERROR::FFMPEG: Failed to fill codec context from codec parameters." << std::endl;
+		avformat_close_input(&formatContext);
+		return -1;
+	}
+
+	// Find the audio codec.
+	const AVCodec* audioCodec = avcodec_find_decoder(audioCodecContext->codec_id);
+	if (!audioCodec)
+	{
+		std::cout << "ERROR::FFMPEG: Codec not found." << std::endl;
+		avcodec_free_context(&audioCodecContext);
+		avformat_close_input(&formatContext);
+		return -1;
+	}
+
+	// Open the audio codec.
+	if (avcodec_open2(audioCodecContext, audioCodec, nullptr))
+	{
+		std::cout << "ERROR::FMPEG: Error opening the codec." << std::endl;
+		avcodec_free_context(&audioCodecContext);
+		avformat_close_input(&formatContext);
+		return -1;
+	}
+
+	// ------------------------- VIDEO ----------------------------------------
+
+	// Get the video codec context.
+	AVCodecParameters* videoCodecParams = formatContext->streams[videoStreamIndex]->codecpar;
+	AVCodecContext* videoCodecContext = avcodec_alloc_context3(nullptr);
+	if (avcodec_parameters_to_context(videoCodecContext, videoCodecParams) < 0)
 	{
 		std::cout << "ERROR::FFMPEG: Failed to fill codec context from codec parameters." << std::endl;
 		avformat_close_input(&formatContext);
@@ -111,20 +162,20 @@ int main()
 	}
 
 	// Find the video codec.
-	const AVCodec* codec = avcodec_find_decoder(codecContext->codec_id);
+	const AVCodec* codec = avcodec_find_decoder(videoCodecContext->codec_id);
 	if (!codec)
 	{
 		std::cout << "ERROR::FFMPEG: Codec not found." << std::endl;
-		avcodec_free_context(&codecContext);
+		avcodec_free_context(&videoCodecContext);
 		avformat_close_input(&formatContext);
 		return -1;
 	}
 
-	// Open the codec.
-	if (avcodec_open2(codecContext, codec, nullptr))
+	// Open the video codec.
+	if (avcodec_open2(videoCodecContext, codec, nullptr))
 	{
 		std::cout << "ERROR::FMPEG: Error opening the codec." << std::endl;
-		avcodec_free_context(&codecContext);
+		avcodec_free_context(&videoCodecContext);
 		avformat_close_input(&formatContext);
 		return -1;
 	}
@@ -135,7 +186,6 @@ int main()
 	{
 		std::cout << "ERROR::FFMPEG: Frame was not properly allocated." << std::endl;
 	}
-
 
 	AVPacket packet = { 0 };
 
@@ -221,21 +271,101 @@ int main()
 
 	unsigned int counter = 0;
 
+	AudioSystem audioSystem;
+
+	
+
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
 
 		if (av_read_frame(formatContext, &packet) >= 0)
 		{
-			//counter++;
-
-			if (packet.stream_index == 0)
+			if (packet.stream_index == audioStreamIndex)
 			{
-				avcodec_send_packet(codecContext, &packet);
+				avcodec_send_packet(audioCodecContext, &packet);
 
 				av_frame_unref(frame);
 
-				if (avcodec_receive_frame(codecContext, frame) == 0)
+				if (avcodec_receive_frame(audioCodecContext, frame) >= 0)
+				{
+					int nChannels = frame->ch_layout.nb_channels;
+					int nSamples = frame->nb_samples;
+
+					std::cout << "Channels: " << nChannels << ", Samples: " << nSamples << std::endl;
+
+					if (frame->format == AV_SAMPLE_FMT_FLTP)
+					{
+						int sampleRate = frame->sample_rate;
+						
+						struct SwrContext* test = swr_alloc();
+
+						swr_alloc_set_opts2(
+							&test,
+							&frame->ch_layout,
+							AV_SAMPLE_FMT_S16,
+							sampleRate,
+							&frame->ch_layout,
+							AV_SAMPLE_FMT_FLTP,
+							sampleRate,
+							0, NULL
+						);
+
+						if (swr_init(test) < 0)
+						{
+							std::cout << "ERROR::FMPEG: Failed to initialize swr context." << std::endl;
+						}
+
+						uint8_t** input_data = NULL;
+						int in_linesize;
+						int in_samples = frame->nb_samples;
+
+						uint8_t** output_data = NULL;
+						int out_linesize;
+						int out_samples = frame->nb_samples;
+
+						av_samples_alloc_array_and_samples(
+							&input_data, &in_linesize, nChannels,
+							in_samples, AV_SAMPLE_FMT_FLTP, 0
+						);
+
+						av_samples_alloc_array_and_samples(
+							&output_data, &out_linesize, nChannels,
+							out_samples, AV_SAMPLE_FMT_S16, 0
+						);
+
+						int ret = swr_convert(test, output_data, out_samples, (const uint8_t**)input_data, in_samples);
+
+						if (ret < 0)
+						{
+							std::cout << "ERROR::FFMPEG: swr did not convert successfully." << std::endl;
+						}
+						else
+						{
+							std::cout << "ret = " << ret << std::endl;
+							std::cout << "out_samples = " << out_samples << std::endl;
+						}
+
+						std::cout << output_data[0][0] << std::endl;
+
+						//int size = frame->linesize[0];
+
+						//std::cout << "sampleRate = " << sampleRate << std::endl;
+
+						audioSystem.Play(output_data[0], ret, sampleRate);
+					}
+				}
+			}
+
+			if (packet.stream_index == videoStreamIndex)
+			{
+				avcodec_send_packet(videoCodecContext, &packet);
+
+				av_frame_unref(frame);
+
+				AVFrame* rgbFrame = av_frame_alloc();
+
+				if (avcodec_receive_frame(videoCodecContext, frame) == 0)
 				{
 					// Just want to get rid of warnings.
 					if (frame == nullptr)
@@ -243,7 +373,6 @@ int main()
 						continue;
 					}
 
-					AVFrame* rgbFrame = av_frame_alloc();
 					if (!rgbFrame)
 					{
 						std::cout << "ERROR::FFMPEG: rgbFrame not allocated succesfully." << std::endl;
@@ -264,6 +393,12 @@ int main()
 							std::cout << "ERROR::FFMPEG: swsContext not created succesfully." << std::endl;
 						}
 
+						// Just want to get rid of warnings.
+						if (rgbFrame == nullptr)
+						{
+							continue;
+						}
+
 						av_image_alloc(
 							rgbFrame->data, rgbFrame->linesize,
 							frame->width, frame->height, targetFormat, 1
@@ -275,6 +410,12 @@ int main()
 						);
 
 						sws_freeContext(swsContext);
+					}
+
+					// Just want to get rid of warnings.
+					if (rgbFrame == nullptr)
+					{
+						continue;
 					}
 
 					glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -312,7 +453,8 @@ int main()
 
 	av_frame_free(&frame);
 	avformat_close_input(&formatContext);
-	avcodec_free_context(&codecContext);
+	avcodec_free_context(&videoCodecContext);
+	avcodec_free_context(&audioCodecContext);
 
 	glfwTerminate();
 

@@ -102,7 +102,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\msys64\usr\local\bin;$(ProjectDir)lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenAL32.lib;ex-common.lib;common.lib;swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -121,7 +121,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\msys64\usr\local\bin;$(ProjectDir)lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenAL32.lib;ex-common.lib;common.lib;swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -136,7 +136,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\msys64\usr\local\bin;$(ProjectDir)lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenAL32.lib;ex-common.lib;common.lib;swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,11 +155,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\msys64\usr\local\bin;$(ProjectDir)lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenAL32.lib;ex-common.lib;common.lib;swscale.lib;swresample.lib;avutil.lib;avformat.lib;avfilter.lib;avdevice.lib;avcodec.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="inc\glad\glad.c" />
+    <ClCompile Include="src\AudioSystem.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -168,6 +169,8 @@
     <ClInclude Include="inc\GLFW\glfw3native.h" />
     <ClInclude Include="inc\KHR\khrplatform.h" />
     <ClInclude Include="inc\stbi\stb_image.h" />
+    <ClInclude Include="src\AudioClip.h" />
+    <ClInclude Include="src\AudioSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\glfw3.lib" />
